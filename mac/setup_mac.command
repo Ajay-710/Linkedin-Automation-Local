@@ -37,10 +37,15 @@ pip install -r "$REPO_ROOT/linkedin-local-service/requirements.txt"
 echo "[4/6] Ensuring Playwright browser dependencies..."
 python -m playwright install chromium || true
 
-echo "[5/6] Starting Ollama and downloading local model (gemma4:e2b)..."
-if ! pgrep -x "ollama" >/dev/null 2>&1; then
+echo "[5/6] Starting Ollama and downloading local model (gemma4:e2b, ~4.6 GB)..."
+if ! curl -s http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
   nohup ollama serve >/tmp/boldest_ollama.log 2>&1 &
-  sleep 4
+  for _ in {1..15}; do
+    if curl -s http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
+      break
+    fi
+    sleep 1
+  done
 fi
 ollama pull gemma4:e2b
 

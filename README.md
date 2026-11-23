@@ -108,7 +108,7 @@ Linkedin-Automation-Local/
    ```bash
    ollama list
    ```
-   You should see `gemma4:e2b` listed (~5 GB). *(Macs with 16 GB+ unified memory run it fastest; 8 GB Macs work best with other heavy apps closed.)*
+   You should see `gemma4:e2b` listed (~4.6 GB). *(Requires a current Ollama version — e.g. `0.34+` — for `gemma4` support. Macs with 16 GB+ unified memory run it fastest; 8 GB Macs work best with other heavy apps closed.)*
 
 5. **Connect Your Free ngrok Account (One-Time):**
    1. Sign up free at https://dashboard.ngrok.com/signup
