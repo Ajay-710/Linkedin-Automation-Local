@@ -1,0 +1,1334 @@
+{
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "d2ae5c51-0910-4702-8efa-12825c90c2ed",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -256,
+        736
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "boldest-omnichannel-launch",
+        "options": {}
+      },
+      "id": "af70aecb-349b-4314-bffb-a235f48f07b2",
+      "name": "Campaign Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -208,
+        1008
+      ],
+      "webhookId": "9846509e-5c75-414c-9a0f-d01687790e37"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1m4rD_sDJIE5AD2bg2Osjk2UHESwBEhF7BE_NKQMCTAk",
+          "mode": "list",
+          "cachedResultName": "BOLDEST | Email Marketing | n8n | CRMC 2026 | Input Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1m4rD_sDJIE5AD2bg2Osjk2UHESwBEhF7BE_NKQMCTAk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1832008571,
+          "mode": "list",
+          "cachedResultName": "Config",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1m4rD_sDJIE5AD2bg2Osjk2UHESwBEhF7BE_NKQMCTAk/edit?usp=drivesdk#gid=1832008571"
+        },
+        "options": {}
+      },
+      "id": "48f4d61e-0946-4aba-9ce2-b9b19b050739",
+      "name": "Get LinkedIn Session Config",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        64,
+        912
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2wAJfnX2oFxXJdSE",
+          "name": "Google Sheets OAuth2 API"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1BaO-BXMg2zuWFoEyJiAXtd72zxLDwcetLi7PjH9Zoh4",
+          "mode": "list",
+          "cachedResultName": "Bold Metrics | Email Marketing | n8n | Input and Output Sheets | Mock Campaign",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BaO-BXMg2zuWFoEyJiAXtd72zxLDwcetLi7PjH9Zoh4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Input",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BaO-BXMg2zuWFoEyJiAXtd72zxLDwcetLi7PjH9Zoh4/edit#gid=0"
+        },
+        "options": {}
+      },
+      "id": "efa9797d-1ae7-4181-9639-f5cad64948d2",
+      "name": "Get Prospects (Input Sheet)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        320,
+        784
+      ],
+      "executeOnce": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2wAJfnX2oFxXJdSE",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Universal Prospect & LinkedIn URL Normalizer (Supports Google Sheets, SQL/NoSQL DBs, or Webhook payloads)\nconst rawItems = $input.all();\nconst results = [];\n\nconst getField = (row, ...keys) => {\n  for (const k of keys) {\n    if (row[k] !== undefined && row[k] !== null && String(row[k]).trim() !== '') {\n      return String(row[k]).trim();\n    }\n  }\n  const lowerMap = {};\n  for (const [rk, rv] of Object.entries(row)) {\n    lowerMap[rk.toLowerCase().replace(/[^a-z0-9]/g, '')] = rv;\n  }\n  for (const k of keys) {\n    const cleanK = k.toLowerCase().replace(/[^a-z0-9]/g, '');\n    if (lowerMap[cleanK] !== undefined && lowerMap[cleanK] !== null && String(lowerMap[cleanK]).trim() !== '') {\n      return String(lowerMap[cleanK]).trim();\n    }\n  }\n  return '';\n};\n\nconst normalizeLinkedInUrl = (rawUrl) => {\n  let u = String(rawUrl || '').trim();\n  if (!u) return '';\n  if (!/^https?:\\/\\//i.test(u) && u.toLowerCase().includes('linkedin.com/')) {\n    u = 'https://' + u.replace(/^\\/+/, '');\n  }\n  return u.split('?')[0].replace(/\\/+$/, '');\n};\n\nfor (let i = 0; i < rawItems.length; i++) {\n  const row = rawItems[i].json?.body || rawItems[i].json || {};\n  const status = getField(row, 'Lead Status', 'lead_status', 'Status', 'status').toLowerCase();\n  if (['completed', 'omnichannel sent', 'rejected', 'in progress'].includes(status)) {\n    continue;\n  }\n\n  const linkedinUrl = normalizeLinkedInUrl(\n    getField(row, 'LinkedIn Profile', 'Linkedin Profile', 'LinkedIn URL', 'linkedin_url', 'linkedin_profile', 'person_linkedin_url', 'linkedinUrl', 'profile_url', 'linkedin')\n  );\n\n  const firstName = getField(row, 'First Name', 'first_name', 'firstName');\n  const lastName = getField(row, 'Last Name', 'last_name', 'lastName');\n  const jobTitle = getField(row, 'Job Title', 'job_title', 'jobTitle', 'Title', 'Role', 'Designation');\n  const companyName = getField(row, 'Company Name for Emails', 'Company Name', 'company_name', 'companyName', 'Company', 'Brand');\n  const companyDomain = getField(row, 'Company Domain', 'company_domain', 'companyDomain', 'Domain', 'Website', 'website');\n  const workEmail = getField(row, 'Work Email', 'work_email', 'workEmail', 'Email', 'email');\n\n  results.push({\n    json: {\n      ...row,\n      row_number: row.row_number || row.id || (i + 2),\n      'First Name': firstName,\n      'Last Name': lastName,\n      'Job Title': jobTitle,\n      'Company Name': companyName,\n      'Company Name for Emails': getField(row, 'Company Name for Emails') || companyName,\n      'Company Domain': companyDomain,\n      'Work Email': workEmail,\n      'LinkedIn Profile': linkedinUrl,\n      linkedin_url: linkedinUrl\n    }\n  });\n}\n\nreturn results;\n"
+      },
+      "id": "34928985-2e0a-4289-a1da-0fc42e52e8fc",
+      "name": "Filter Unprocessed Leads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        944
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "ae0756d2-f64c-4692-81a8-42d8e0138666",
+      "name": "Loop Over Prospects",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        816,
+        832
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($('Get LinkedIn Session Config').first()?.json?.LinkedInServerUrl || $('Get LinkedIn Session Config').first()?.json?.linkedin_server_url || $('Get LinkedIn Session Config').first()?.json?.NgrokUrl || 'https://genethliacally-yetta-unrhythmically.ngrok-free.dev').replace(/\\/+$/, '') + '/linkedin/action' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "ngrok-skip-browser-warning",
+              "value": "true"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ action: 'CHECK_MUTUAL_CONNECTIONS', urls: [$('Loop Over Prospects').first().json['LinkedIn Profile'] || $('Loop Over Prospects').first().json.linkedin_url || ''], cookie: $('Loop Over Prospects').first().json.li_at || $('Get LinkedIn Session Config').first()?.json?.li_at || '', browserState: $('Loop Over Prospects').first().json.browserState || $('Get LinkedIn Session Config').first()?.json?.BrowserState || $('Get LinkedIn Session Config').first()?.json?.browserState || '' }) }}",
+        "options": {}
+      },
+      "id": "9f6b8c42-4e7d-4a91-b8c3-71d2e5f04a11",
+      "name": "LinkedIn: Check Mutual Connections",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        624
+      ],
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://serpapi.com/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "engine",
+              "value": "google"
+            },
+            {
+              "name": "q",
+              "value": "={{ 'site:' + ($('Loop Over Prospects').first().json['Company Domain'] || '').replace(/^https?:\\/\\//i, '').replace(/^www\\./i, '').replace(/\\/.*$/, '').trim() }}"
+            },
+            {
+              "name": "api_key",
+              "value": "YOUR_SERPAPI_API_KEY"
+            },
+            {
+              "name": "num",
+              "value": "10"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c7b6cfe9-7b7a-4d37-913f-a587f35bf0dd",
+      "name": "Search Website Fit & Stack Signals",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1088,
+        720
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://serpapi.com/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "engine",
+              "value": "google"
+            },
+            {
+              "name": "q",
+              "value": "={{ '\"' + ($('Loop Over Prospects').first().json['Company Name for Emails'] || $('Loop Over Prospects').first().json['Company Name'] || ($('Loop Over Prospects').first().json['Company Domain'] || '').replace(/^https?:\\/\\//i, '').replace(/^www\\./i, '').replace(/\\..*$/, '')).trim() + '\" (launch OR collection OR expansion OR ecommerce OR stores OR returns OR sizing OR acquisition OR funding)' }}"
+            },
+            {
+              "name": "api_key",
+              "value": "YOUR_SERPAPI_API_KEY"
+            },
+            {
+              "name": "tbm",
+              "value": "nws"
+            },
+            {
+              "name": "num",
+              "value": "10"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ae8e7375-8842-46d3-a1d4-8c58fea1e18c",
+      "name": "Search Recent News & Buying Triggers",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1344,
+        896
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build LinkedIn context from Input Sheet fields + live Mutual Connections check\nconst lead = $('Loop Over Prospects').first()?.json || {};\nlet mutualRaw = {};\ntry {\n  mutualRaw = $('LinkedIn: Check Mutual Connections').first()?.json || {};\n} catch (e) {\n  mutualRaw = {};\n}\n\nconst getVal = (...keys) => {\n  for (const k of keys) {\n    if (lead[k] !== undefined && lead[k] !== null && String(lead[k]).trim() !== '') {\n      return String(lead[k]).trim();\n    }\n  }\n  return '';\n};\n\nconst firstName = getVal('First Name', 'first_name', 'firstName');\nconst lastName = getVal('Last Name', 'last_name', 'lastName');\nconst jobTitle = getVal('Job Title', 'job_title', 'jobTitle', 'Title', 'Role');\nconst companyName = getVal('Company Name for Emails', 'Company Name', 'company_name', 'Company');\nconst companyDomain = getVal('Company Domain', 'company_domain', 'Domain', 'Website');\nconst linkedinUrl = getVal('LinkedIn Profile', 'linkedin_url', 'LinkedIn URL', 'linkedin_profile');\n\nconst headline = getVal('LinkedIn Headline', 'Headline', 'headline', 'Opener Hook', 'opener_hook') || mutualRaw.headline || (jobTitle && companyName ? `${jobTitle} at ${companyName}` : jobTitle);\nconst about = getVal('LinkedIn Summary', 'About', 'about', 'Bio', 'bio', 'Summary', 'summary', 'LinkedIn Bio') || mutualRaw.about || `${firstName} ${lastName} serves as ${jobTitle} at ${companyName}.`.trim();\nconst recentPosts = getVal('Recent Posts', 'Recent Activity', 'recent_posts', 'recent_activity', 'Posts', 'LinkedIn Posts') || 'No recent posts provided in input.';\nconst expSummary = getVal('Experience Summary', 'experience_summary', 'Experience') || `${jobTitle} at ${companyName}`.trim();\n\nconst liveNames = Array.isArray(mutualRaw.lead_colleague_names) ? mutualRaw.lead_colleague_names : [];\nconst boldestMutualNames = [...new Set(liveNames.map(n => String(n).trim()).filter(Boolean))];\nconst hasBoldestMutual = boldestMutualNames.length > 0;\nconst mutualOpenerPhrase = hasBoldestMutual\n  ? (boldestMutualNames.length === 1\n      ? `I work with ${boldestMutualNames[0]}`\n      : `I work with ${boldestMutualNames[0]} and ${boldestMutualNames[1]}`)\n  : '';\n\nconst connectionDegree = mutualRaw.connection_degree || getVal('Connection Degree', 'connection_degree') || '2nd';\nconst isAlreadyConnected = Boolean(mutualRaw.is_connected || connectionDegree === '1st');\n\nreturn [{\n  json: {\n    linkedin_url: linkedinUrl,\n    first_name: firstName,\n    last_name: lastName,\n    job_title: jobTitle,\n    company_name: companyName,\n    company_domain: companyDomain,\n    headline: String(headline).substring(0, 300),\n    about: String(about).substring(0, 800),\n    recent_posts: String(recentPosts).substring(0, 1200),\n    experience_summary: expSummary,\n    connection_degree: connectionDegree,\n    is_already_connected: isAlreadyConnected,\n    has_boldest_mutual: hasBoldestMutual,\n    boldest_mutual_names: boldestMutualNames,\n    boldest_mutual_contacts: Array.isArray(mutualRaw.matched_boldest_contacts) ? mutualRaw.matched_boldest_contacts : [],\n    mutual_opener_phrase: mutualOpenerPhrase,\n    boldest_mutual_summary: hasBoldestMutual ? `${boldestMutualNames.join(', ')} (mutual LinkedIn connection at Boldest)` : 'None detected',\n    mutual_text_raw: mutualRaw.mutual_text || '',\n    open_profile: Boolean(lead['Open Profile'] || lead['open_profile'] || false)\n  }\n}];\n"
+      },
+      "id": "9dc7f741-6313-4018-891f-b1232ff325b8",
+      "name": "Normalize LinkedIn Dossier",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1616,
+        768
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are the Omnichannel Research & Signal Validation Analyst for Bold Metrics outbound.\n\nYou are NOT the copywriter. You synthesize 3 live channels of intelligence—(1) Prospect Website Fit/Sizing Signals, (2) Recent Company News/Buying Triggers, and (3) Prospect LinkedIn Profile & Recent Post Activity—into a verified, zero-hallucination Omnichannel Dossier.\n\nAccuracy beats a clever angle. Never invent a claim that is not directly supported by the evidence below.\n\n==================================================\nWHAT BOLD METRICS SELLS (CONTEXT ONLY, NOT EVIDENCE)\n==================================================\nBold Metrics is an AI fit and sizing platform for apparel brands.\n- Builds a \"digital twin\" of each shopper from a few quick questions (no scanning, photos, or tape measures).\n- Maps 50+ body measurements and recommends the best size style by style.\n- Products: Smart Size Chart (size + fit preference on PDPs), Virtual Sizer (sizing API), Virtual Tailor (measurements for custom clothiers), Apparel Insights (body data for design/grading), Agentic Sizing Protocol (lets AI shopping agents answer sizing questions).\n- Outcomes: fewer fit-related returns, less bracketing (buying 2-3 sizes to return some), higher conversion and AOV.\n\n==================================================\nINPUTS\n==================================================\nProspect Name: {{ $('Loop Over Prospects').first().json['First Name'] || '' }} {{ $('Loop Over Prospects').first().json['Last Name'] || '' }}\nJob Title: {{ $('Loop Over Prospects').first().json['Job Title'] || '' }}\nCompany: {{ $('Loop Over Prospects').first().json['Company Name for Emails'] || $('Loop Over Prospects').first().json['Company Name'] || '' }}\nDomain: {{ $('Loop Over Prospects').first().json['Company Domain'] || '' }}\nLinkedIn URL: {{ $('Loop Over Prospects').first().json['LinkedIn Profile'] || '' }}\nCurrent Date: {{ $now.toFormat('yyyy-MM-dd') }}\nNews Recency Cutoff (60 days): {{ $now.minus({ months: 2 }).toFormat('yyyy-MM-dd') }}\n\n==================================================\nCHANNEL 1: PROSPECT WEBSITE EVIDENCE (FIT, SIZING & PDP SIGNALS)\n==================================================\n{{ ($('Search Website Fit & Stack Signals').first().json.organic_results || []).map((r, i) => `[W${i+1}] ${r.title}\\nSnippet: ${r.snippet}\\nLink: ${r.link}`).join('\\n\\n') || 'No website results found.' }}\n\n==================================================\nCHANNEL 2: RECENT NEWS & BUYING TRIGGERS\n==================================================\n{{ ($('Search Recent News & Buying Triggers').first().json.news_results || $('Search Recent News & Buying Triggers').first().json.organic_results || []).map((r, i) => `[N${i+1}] ${r.title}\\nDate: ${r.date || 'unknown'}\\nSnippet: ${r.snippet}\\nLink: ${r.link}`).join('\\n\\n') || 'No news results found.' }}\n\n==================================================\nCHANNEL 3: LINKEDIN PROFILE, MUTUALS & RECENT ACTIVITY\n==================================================\nConnection Degree to Scott: {{ $('Normalize LinkedIn Dossier').first().json.connection_degree || '2nd' }}\nBoldest Mutual Connection(s): {{ $('Normalize LinkedIn Dossier').first().json.boldest_mutual_summary || 'None detected' }}\nMutual Opener Phrase: {{ $('Normalize LinkedIn Dossier').first().json.mutual_opener_phrase || 'None' }}\nHeadline: {{ $('Normalize LinkedIn Dossier').first().json.headline || 'Not available' }}\nAbout / Bio: {{ $('Normalize LinkedIn Dossier').first().json.about || 'Not available' }}\nRecent Posts / Activity: {{ $('Normalize LinkedIn Dossier').first().json.recent_posts || 'No recent posts available' }}\nExperience Summary: {{ $('Normalize LinkedIn Dossier').first().json.experience_summary || 'Not available' }}\n\n==================================================\nSTEP 1: IDENTIFY THE BRAND & RELEVANCE GATE\n==================================================\nAPPROVE (\"[APPROVED]\") when the evidence shows the company makes or sells FINISHED GARMENTS where the buyer chooses a size online (DTC ecommerce or B2B uniform/workwear ordering portal):\n- Outerwear, performance/outdoor, athleisure, denim\n- Dresses, formalwear, tailoring, suiting, made-to-measure\n- Workwear, uniforms, PPE garments, turnout gear\n- Kidswear, schoolwear, or multi-fit apparel lines (petite, tall, plus, slim/relaxed)\n\nREJECT (\"[REJECTED]\") when:\n- No evidence of sized apparel (software, food, hardware, pure agency/services, raw textiles only, bags/jewelry only)\n- Evidence belongs to a different company than the domain\n- Site already says \"powered by Bold Metrics\"\n\n==================================================\nSTEP 2: EXTRACT WEBSITE FIT OBSERVATION & CURRENT TOOL\n==================================================\n1. Check for any existing sizing tool in snippets (True Fit, Fit Analytics, Kiwi Sizing, Virtusize, Easysize, 3DLOOK, MySize, or static size chart).\n2. Select the ONE most concrete, verifiable website observation:\n   - Size range breadth (e.g. \"offers XXS to 3XL across regular and tall fits\")\n   - Multiple cuts/fits per garment (slim, athletic, classic, relaxed)\n   - Fit-sensitive garment categories on PDPs (technical outerwear, tailored suits, denim, turnout gear)\n   - Specific size guide instructions or return policy facts (e.g. \"free 30-day returns and exchanges\")\n\n==================================================\nSTEP 3: EXTRACT LINKEDIN PERSONALIZATION HOOK & DAILY ROLE PAIN\n==================================================\n1. From the LinkedIn data (or Job Title if profile text is sparse):\n   - Identify a genuine peer-to-peer connection hook (a mutual Boldest colleague if verified above, a recent post topic, a career initiative mentioned in their bio/headline, or their specific mandate leading eCommerce/Merchandising/Product/CX at the brand).\n2. Define `role_daily_pain`: The concrete operational friction someone in their exact role faces (e.g. for VP eCommerce: \"shoppers hesitating between sizes on PDPs or bracketing 2 sizes and returning one\"; for Head of Technical Design/Merchandising: \"translating static size charts across different cuts so shoppers order the right fit the first time\").\n\n==================================================\nSTEP 4: VALIDATE RECENT NEWS (PAST 60 DAYS ONLY) & PROOF POINT\n==================================================\n1. Approve news ONLY if dated on or after the 60-day cutoff and specifically about this brand (new collection, store/market expansion, replatforming, AI shopping initiative, executive hire).\n2. Select ONE exact proof point by category:\n   - Outerwear / luxury: \"Canada Goose saw a 21% reduction in returns after adding Bold Metrics.\"\n   - Outdoor / performance / technical: \"Helly Hansen saw conversion rise 3.8x in Europe among shoppers who used the size tool.\"\n   - Menswear / shirts / smart-casual: \"Mizzen+Main's VP of eCommerce said it significantly reduced return rates and lifted both AOV and conversion.\"\n   - Workwear / PPE / uniforms: \"Fire-Dex uses Bold Metrics to size firefighters digitally instead of through in-person fittings.\"\n   - Kidswear / schoolwear: \"French Toast launched 'Find Your Fit' for schoolwear with Bold Metrics.\"\n\n==================================================\nOUTPUT (PLAIN TEXT DOSSIER ONLY)\n==================================================\nOutput ONLY the completed research lines below:\nGATE: [APPROVED] or [REJECTED]\nCLEAN_BRAND_NAME: (shortest natural brand name)\nAPPAREL_CATEGORY: (e.g. Outerwear, Performance Apparel, Tailoring, Denim, Workwear)\nCURRENT_FIT_TOOL: (detected tool or None detected)\nFIT_OBSERVATION: (1 concrete observation from the website snippets + URL)\nRECENT_NEWS: (verified news from past 60 days or No recent news)\nBOLDEST_MUTUAL_CONNECTION: (verified Boldest mutual connection name(s) or None)\nLINKEDIN_HOOK: (concrete hook from Mutuals, Headline, Bio, Recent Posts, or Role Mandate)\nROLE_DAILY_PAIN: (specific sizing/fit/returns friction for this prospect's role)\nPROOF_POINT: (the 1 exact matching proof point from Step 4)"
+      },
+      "id": "041db4f5-55d4-4054-982d-2b0daa917e3d",
+      "name": "AI Omnichannel Researcher",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        1888,
+        896
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "model": "gemma4:e2b",
+        "options": {
+          "temperature": 0.4
+        }
+      },
+      "id": "ec6785c9-356c-433d-8518-c9172660c69c",
+      "name": "Ollama Model - Researcher",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        1936,
+        1104
+      ],
+      "credentials": {
+        "ollamaApi": {
+          "id": "BZ1LgNvER0ZNeBaN",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "relevance-gate-check",
+              "leftValue": "={{ ($json.text || $json.response || $json.output || $json.content?.[0]?.text || '') }}",
+              "rightValue": "[REJECTED]",
+              "operator": {
+                "type": "string",
+                "operation": "notContains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "536f02d6-b762-4de6-9ba4-9f451f48054b",
+      "name": "Filter Relevant Prospects",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2240,
+        816
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1BaO-BXMg2zuWFoEyJiAXtd72zxLDwcetLi7PjH9Zoh4",
+          "mode": "list",
+          "cachedResultName": "Bold Metrics | Email Marketing | n8n | Input and Output Sheets | Mock Campaign",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BaO-BXMg2zuWFoEyJiAXtd72zxLDwcetLi7PjH9Zoh4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Input",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BaO-BXMg2zuWFoEyJiAXtd72zxLDwcetLi7PjH9Zoh4/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $('Loop Over Prospects').first().json.row_number }}",
+            "Lead Status": "Rejected"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "Lead Status",
+              "displayName": "Lead Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3774f6d2-ef92-4018-afd4-09f04df2b5e2",
+      "name": "Update Status: Rejected",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2512,
+        1104
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2wAJfnX2oFxXJdSE",
+          "name": "Google Sheets OAuth2 API"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an elite Omnichannel B2B Outbound Copywriter for Bold Metrics, trained on the 2026 Backchannels Benchmark Playbook (14.2% Email Reply Rate + 34% LinkedIn Reply Rate 66-Word Framework).\n\nWhy old workflows fail:\n- They write 200-word robotic, fill-in-the-blank templates.\n- They send emails and LinkedIn messages in silos that ignore each other.\n- They pitch features inside the LinkedIn connection request and ask strangers for a \"30-minute demo\".\n\nYour mission:\nWrite a tightly coordinated, human-sounding **Omnichannel Outbound Package** (3 Emails + 3 LinkedIn Touches) where Email and LinkedIn work together as ONE real person reaching out across two channels.\n\n==================================================\nPROSPECT & VERIFIED DOSSIER (CLOSED INFORMATION SET)\n==================================================\nFirst Name: {{ $('Loop Over Prospects').first().json['First Name'] || '' }}\nLast Name: {{ $('Loop Over Prospects').first().json['Last Name'] || '' }}\nJob Title: {{ $('Loop Over Prospects').first().json['Job Title'] || '' }}\nCompany Domain: {{ $('Loop Over Prospects').first().json['Company Domain'] || '' }}\nLinkedIn Headline: {{ $('Normalize LinkedIn Dossier').first().json.headline || '' }}\nAlready Connected: {{ $('Normalize LinkedIn Dossier').first().json.is_already_connected ? 'YES (1st-degree connection — write Touch 1/2 as a direct DM without asking to connect)' : 'NO (send Connection Request note first, then DM on acceptance)' }}\nBoldest Mutual Connection Opener: {{ $('Normalize LinkedIn Dossier').first().json.mutual_opener_phrase || 'None' }}\nBoldest Mutual Details: {{ $('Normalize LinkedIn Dossier').first().json.boldest_mutual_summary || 'None' }}\n\nVerified Omnichannel Research Dossier:\n{{ $('AI Omnichannel Researcher').first().json.text || $('AI Omnichannel Researcher').first().json.response || $('AI Omnichannel Researcher').first().json.output || $('AI Omnichannel Researcher').first().json.content?.[0]?.text || '' }}\n\n==================================================\nSTRICT ANTI-HALLUCINATION & STYLE RULES\n==================================================\n1. Use facts ONLY from the Verified Research Dossier. Never invent size ranges, return rates, mutual connections, or news.\n2. Never accuse the brand of having \"bad sizing\" or \"high return rates\". Frame around the shopper's size decision on the PDP.\n3. Use `clean_brand_name` everywhere (never legal suffixes or raw domains).\n4. ZERO em dashes (—) or en dashes (–) anywhere. Use commas or periods.\n5. ZERO buzzwords (\"AI-powered\", \"ecosystem\", \"leverage\", \"synergy\", \"revolutionary\", \"just following up\", \"touching base\", \"hope this finds you well\").\n6. NEVER output square brackets [ or ] or placeholder labels like [First Name], [Brand], or [Mutual Connection] anywhere in your output.\n7. Keep sentences crisp, natural, and easy to read on a phone in 5 seconds.\n\n==================================================\nPART A: LINKEDIN 3-TOUCH SEQUENCE (34% REPLY BENCHMARK)\n==================================================\nMUTUAL CONNECTION RULE (HIGHEST PRIORITY):\n- IF `Boldest Mutual Connection Opener` is NOT \"None\" (meaning an actual phrase like \"I work with Alex\" is shown above):\n  * `linkedin_dm_1_diagnostic` MUST start with that exact phrase right after the greeting, then ask the short diagnostic question.\n  * `linkedin_connection_note` MUST also lead naturally with that exact phrase before mentioning their role and brand.\n- IF `Boldest Mutual Connection Opener` IS \"None\": DO NOT mention mutual connections, colleagues, or working with anyone. Jump straight to the prospect's greeting and observation.\n\n1. `linkedin_score` (1 to 5):\n   - 5 = VP/Director/Head of eCommerce, Digital, DTC, CX, or Founder/CEO at an apparel brand.\n   - 4 = Head of Product, Technical Design, Merchandising, Fit, Returns/Ops, or Senior eCom Manager.\n   - 3 = Marketing/Brand/Commercial leader.\n\n2. `linkedin_connection_note` (Touch 1 — MUST BE UNDER 260 CHARACTERS & ~32-38 WORDS):\n   - Formula: If a mutual phrase is given above, lead with it. Otherwise name their real role/focus at their brand + sizing confidence across styles + humble hedge + zero pitch.\n   - HARD LIMIT: Must be <= 260 characters so LinkedIn never truncates it.\n\n3. `linkedin_dm_1_diagnostic` (Touch 2 — Sent after they accept, or sent directly if already 1st-degree — ~25-35 WORDS, ZERO PITCH):\n   - Never treat acceptance as permission to pitch! If a mutual phrase is given above, lead with it in sentence 1; otherwise do NOT mention any mutual connection.\n   - Example when Boldest Mutual Connection Opener is \"None\":\n     \"Thanks for connecting, Govind. Quick question: when shoppers are choosing between sizes on Vuori's PDPs, are you mostly relying on static size guides right now, or testing interactive fit guidance?\"\n   - Ask a concrete binary operational diagnostic question tailored to this prospect's brand.\n\n4. `linkedin_dm_2_followup` (Touch 3 — Sent 5 days later if no reply, then STOP — ~22-28 WORDS):\n   - Remove pressure completely (no brackets, natural brand and category names).\n\n==================================================\nPART B: COORDINATED 3-EMAIL SEQUENCE (14.2% REPLY BENCHMARK)\n==================================================\n1. `subject_line` (2 to 4 words, lowercase/sentence case, internal look):\n   - Examples: \"Vuori size guide\", \"Sizing at Vuori\", \"Fit on Vuori PDPs\"\n\n2. `email_1` (<85 words, Pain-First Observation + Digital Twin + Micro-Audit Ask + Cross-Channel P.S.):\n   - Line 1 (Pain/Observation Hook): Start directly with the brand's verified website observation (`approved_fit_observation`) and the exact PDP moment where shoppers hesitate between two sizes or order both to return one.\n   - Line 2 (1-Sentence What We Do): Bold Metrics builds a shopper digital twin from a few quick questions (no photos or tape measures) to recommend their exact size style by style.\n   - Line 3 (Tiny Permission / Teardown CTA — NOT a 30-min demo ask): Ask if they are open to seeing a quick visual mock/example of how it would look on one of the brand's product pages (or a quick 10-minute chat).\n   - Sign-off:\n     Regards,\n     %signature%\n   - P.S. Line (Omnichannel Bridge — +18% reply lift):\n     \"P.S. Sent you a quick connection request on LinkedIn too so you can put a face to the name.\"\n\n3. `email_2` (<70 words, Fresh News/Trigger or Verbatim Peer Proof Point + Cross-Channel Touch):\n   - Reference `approved_news` (if status is \"Relevant news found\") OR lead with the exact verbatim `proof_point` matched to their category.\n   - Subtly bridge the channels (\"Dropped a quick note on LinkedIn earlier this week, figured I'd share this here in case email is easier.\").\n   - End with a low-friction ask and `Regards,\\n%signature%`.\n\n4. `email_3` (<45 words, Genuine No-Pressure Breakup / Value Drop):\n   - Release pressure completely.\n   - End with `Regards,\\n%signature%`.\n\n==================================================\nOUTPUT FORMAT (VALID JSON ONLY, NO CODE FENCES)\n==================================================\n{\n  \"linkedin_score\": 5,\n  \"subject_line\": \"\",\n  \"email_1\": \"\",\n  \"email_2\": \"\",\n  \"email_3\": \"\",\n  \"linkedin_connection_note\": \"\",\n  \"linkedin_dm_1_diagnostic\": \"\",\n  \"linkedin_dm_2_followup\": \"\"\n}\nEscape all newlines inside strings as \\n."
+      },
+      "id": "b24dc1d7-8af0-4f53-a24e-dc0fd687db90",
+      "name": "Generate Omnichannel Sequence",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        2544,
+        688
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "model": "gemma4:e2b",
+        "options": {
+          "temperature": 0.7
+        }
+      },
+      "id": "1aaf16d4-1f1a-4f70-b75c-5fca4c55d7de",
+      "name": "Ollama Model - Copywriter",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        2608,
+        912
+      ],
+      "credentials": {
+        "ollamaApi": {
+          "id": "BZ1LgNvER0ZNeBaN",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = [];\n\nfor (const item of $input.all()) {\n  let raw = item.json.text || item.json.response || item.json.output || item.json.content?.[0]?.text || item.json.content || \"\";\n  if (typeof raw !== \"string\") {\n    raw = JSON.stringify(raw);\n  }\n\n  let clean = raw.replace(/^```(?:json)?\\s*/i, '').replace(/\\s*```$/i, '').trim();\n  const jsonMatch = clean.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    clean = jsonMatch[0];\n  }\n\n  let parsed = {};\n  try {\n    parsed = JSON.parse(clean);\n  } catch (e) {\n    const extractField = (fieldName) => {\n      const regex = new RegExp('\"' + fieldName + '\"\\\\s*:\\\\s*\"([\\\\s\\\\S]*?)(?=\"\\\\s*,\\\\s*\"[a-zA-Z0-9_]+\"|\"\\\\s*})');\n      const match = clean.match(regex);\n      return match ? match[1].replace(/\\\\n/g, '\\n').replace(/\\\\\"/g, '\"') : '';\n    };\n    const scoreMatch = clean.match(/\"linkedin_score\"\\s*:\\s*([1-5])/);\n    parsed = {\n      linkedin_score: scoreMatch ? parseInt(scoreMatch[1], 10) : 4,\n      subject_line: extractField('subject_line'),\n      email_1: extractField('email_1'),\n      email_2: extractField('email_2'),\n      email_3: extractField('email_3'),\n      linkedin_connection_note: extractField('linkedin_connection_note'),\n      linkedin_dm_1_diagnostic: extractField('linkedin_dm_1_diagnostic'),\n      linkedin_dm_2_followup: extractField('linkedin_dm_2_followup')\n    };\n  }\n\n  const stripDashes = (str) => String(str || '').replace(/[\\u2014\\u2013]/g, ', ');\n  const hasBracketPlaceholder = (str) => /\\[[A-Za-z0-9 _'\\-\\/]{2,60}\\]/.test(String(str || ''));\n\n  const lead = $('Loop Over Prospects').first()?.json || {};\n  const liNorm = $('Normalize LinkedIn Dossier').first()?.json || {};\n  let configRow = {};\n  try {\n    configRow = $('Get LinkedIn Session Config').first()?.json || {};\n  } catch (e) {\n    configRow = {};\n  }\n\n  const firstName = lead['First Name'] || liNorm.first_name || 'there';\n  const lastName = lead['Last Name'] || liNorm.last_name || '';\n  const companyName = lead['Company Name for Emails'] || lead['Company Name'] || liNorm.company_name || 'your brand';\n  const companyDomain = lead['Company Domain'] || liNorm.company_domain || '';\n  const jobTitle = lead['Job Title'] || liNorm.job_title || 'eCommerce';\n  const linkedinUrl = (lead['LinkedIn Profile'] || lead['linkedin_url'] || liNorm.linkedin_url || '').trim();\n\n  const cleanPlaceholders = (str) => stripDashes(str)\n    .replace(/\\[\\s*First\\s*Name\\s*\\]/gi, firstName)\n    .replace(/\\[\\s*(?:Clean\\s*)?Brand(?:\\s*Name)?\\s*\\]/gi, companyName)\n    .replace(/\\[\\s*apparel_category\\s*\\]/gi, 'apparel')\n    .trim();\n\n  const hasBoldestMutual = Boolean(liNorm.has_boldest_mutual);\n  const boldestMutualNames = Array.isArray(liNorm.boldest_mutual_names) ? liNorm.boldest_mutual_names : [];\n  const mutualOpenerPhrase = String(liNorm.mutual_opener_phrase || '').trim();\n  const primaryColleague = boldestMutualNames[0] || '';\n  const isAlreadyConnected = Boolean(liNorm.is_already_connected);\n\n  const defaultConnNote = hasBoldestMutual && mutualOpenerPhrase\n    ? `Hey ${firstName}, ${mutualOpenerPhrase} and noticed we share a mutual connection. Saw you're leading ${jobTitle} at ${companyName}, thought it'd be great to connect here.`\n    : `Hey ${firstName}, saw you're leading ${jobTitle} at ${companyName}. Really liked how you're structuring your online product pages. Thought it'd be great to connect here.`;\n  let connNote = cleanPlaceholders(parsed.linkedin_connection_note || defaultConnNote);\n  if (hasBracketPlaceholder(connNote)) {\n    connNote = defaultConnNote;\n  }\n  if (hasBoldestMutual && mutualOpenerPhrase && primaryColleague) {\n    const lowNote = connNote.toLowerCase();\n    if (!lowNote.includes(primaryColleague.toLowerCase()) || !lowNote.includes('work with')) {\n      connNote = `Hey ${firstName}, ${mutualOpenerPhrase} and noticed we share a mutual connection. Saw your work at ${companyName}, thought it'd be great to connect.`;\n    }\n  } else if (!hasBoldestMutual && (/\\bi work with\\b/i.test(connNote) || /mutual connection/i.test(connNote))) {\n    connNote = defaultConnNote;\n  }\n  if (connNote.length > 285) {\n    connNote = connNote.substring(0, 282).replace(/\\s+\\S*$/, '') + '...';\n  }\n\n  const defaultDmBody = `Quick question: when shoppers are choosing between sizes on ${companyName}'s PDPs, are you mostly relying on static size guides right now, or testing interactive fit guidance?`;\n  const defaultDm1 = hasBoldestMutual && mutualOpenerPhrase\n    ? (isAlreadyConnected\n        ? `Hey ${firstName}, ${mutualOpenerPhrase} and wanted to reach out directly. ${defaultDmBody}`\n        : `Thanks for connecting, ${firstName}. ${mutualOpenerPhrase}. ${defaultDmBody}`)\n    : (isAlreadyConnected\n        ? `Hey ${firstName}, ${defaultDmBody}`\n        : `Thanks for connecting, ${firstName}. ${defaultDmBody}`);\n\n  let dm1 = cleanPlaceholders(parsed.linkedin_dm_1_diagnostic || defaultDm1);\n  // Strip any leftover hallucinated bracket placeholders like [Mutual Connection] before validating\n  dm1 = dm1\n    .replace(/\\[[A-Za-z0-9 _'\\-\\/]{2,60}\\]\\s*(?:and\\s+wanted\\s+to\\s+ask\\s+a\\s+quick\\s+question:|and\\s+wanted\\s+to\\s+reach\\s+out[^.:]*[.:]?|[,.:;-]*\\s*)?/gi, '')\n    .replace(/\\s{2,}/g, ' ')\n    .trim();\n  if (!dm1 || hasBracketPlaceholder(dm1)) {\n    dm1 = defaultDm1;\n  }\n  if (hasBoldestMutual && mutualOpenerPhrase && primaryColleague) {\n    const headSlice = dm1.slice(0, 140).toLowerCase();\n    if (!headSlice.includes(primaryColleague.toLowerCase()) || !headSlice.includes('work with')) {\n      const cleanedTail = dm1\n        .replace(/^(hi|hey|hello)\\s+[^,.!\\n]+[,!.]\\s*/i, '')\n        .replace(/^thanks for connecting[^.!?\\n]*[.!?]\\s*/i, '')\n        .trim();\n      const prefix = isAlreadyConnected\n        ? `Hey ${firstName}, ${mutualOpenerPhrase}. `\n        : `Thanks for connecting, ${firstName}. ${mutualOpenerPhrase}. `;\n      dm1 = `${prefix}${cleanedTail || defaultDmBody}`;\n    }\n  } else if (!hasBoldestMutual && (/\\bi work with\\b/i.test(dm1) || /mutual connection/i.test(dm1))) {\n    dm1 = defaultDm1;\n  }\n\n  const defaultDm2 = `No worries if the timing's off, ${firstName}. Just wanted to make sure my note didn't get buried. Happy to share how similar apparel teams are handling PDP sizing if ever useful.`;\n  let dm2 = cleanPlaceholders(parsed.linkedin_dm_2_followup || defaultDm2);\n  if (hasBracketPlaceholder(dm2)) dm2 = defaultDm2;\n\n  const defaultEmail1 = `Hi ${firstName},\\n\\nWhile looking at ${companyName}'s product pages, I noticed how shoppers choosing across cuts and size ranges often hesitate between two sizes or order both to return one.\\n\\nBold Metrics builds a shopper digital twin from a few quick questions, with no photos or tape measures, to recommend their exact size style by style.\\n\\nOpen to seeing a quick visual mock of how this would look on one of ${companyName}'s PDPs?\\n\\nRegards,\\n%signature%\\n\\nP.S. Sent you a quick connection request on LinkedIn too so you can put a face to the name.`;\n  const defaultEmail2 = `Hi ${firstName},\\n\\nDropped a quick note on LinkedIn earlier this week, figured I'd share this here in case email is easier.\\n\\nBrands like Canada Goose and Helly Hansen used Bold Metrics' digital twin sizing on their PDPs to cut fit-related returns by over 20% while lifting conversion.\\n\\nHappy to send over a 1-page teardown for ${companyName} if useful.\\n\\nRegards,\\n%signature%`;\n  const defaultEmail3 = `Hi ${firstName},\\n\\nLeaving this here in case helping shoppers nail their size the first time at ${companyName} becomes a priority next quarter.\\n\\nRegards,\\n%signature%`;\n\n  let subj = cleanPlaceholders(parsed.subject_line || `Sizing on ${companyName} PDPs`);\n  if (hasBracketPlaceholder(subj)) subj = `Sizing on ${companyName} PDPs`;\n  let e1 = cleanPlaceholders(parsed.email_1 || defaultEmail1);\n  if (hasBracketPlaceholder(e1)) e1 = defaultEmail1;\n  let e2 = cleanPlaceholders(parsed.email_2 || defaultEmail2);\n  if (hasBracketPlaceholder(e2)) e2 = defaultEmail2;\n  let e3 = cleanPlaceholders(parsed.email_3 || defaultEmail3);\n  if (hasBracketPlaceholder(e3)) e3 = defaultEmail3;\n\n  results.push({\n    json: {\n      row_number: lead.row_number,\n      first_name: lead['First Name'] || liNorm.first_name || '',\n      last_name: lastName,\n      job_title: lead['Job Title'] || liNorm.job_title || '',\n      company_name: companyName,\n      company_domain: companyDomain,\n      work_email: lead['Work Email'] || '',\n      linkedin_profile: linkedinUrl,\n      linkedin_score: Number(parsed.linkedin_score) || 4,\n      subject_line: subj,\n      email_1: e1,\n      email_2: e2,\n      email_3: e3,\n      linkedin_connection_note: connNote,\n      linkedin_connection_note_length: connNote.length,\n      linkedin_dm_1_diagnostic: dm1,\n      linkedin_dm_2_followup: dm2,\n      is_already_connected: isAlreadyConnected,\n      has_boldest_mutual: hasBoldestMutual,\n      boldest_mutual_names: boldestMutualNames,\n      mutual_opener_phrase: mutualOpenerPhrase,\n      li_at: lead.li_at || configRow.li_at || '',\n      browserState: lead.browserState || configRow.BrowserState || configRow.browserState || '',\n      linkedin_server_url: (lead.linkedin_server_url || configRow.LinkedInServerUrl || configRow.NgrokUrl || 'https://genethliacally-yetta-unrhythmically.ngrok-free.dev').replace(/\\/+$/, ''),\n      has_linkedin_url: linkedinUrl.startsWith('http')\n    }\n  });\n}\n\nreturn results;\n"
+      },
+      "id": "2cb6a040-09dd-4c20-80d8-75a852e56d90",
+      "name": "Parse & Validate Omnichannel Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2896,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($('Parse & Validate Omnichannel Payload').first().json.linkedin_server_url || 'https://genethliacally-yetta-unrhythmically.ngrok-free.dev') + '/linkedin/action' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "ngrok-skip-browser-warning",
+              "value": "true"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ action: 'LIKE_RECENT_POSTS', urls: [$('Parse & Validate Omnichannel Payload').first().json.linkedin_profile || ''], cookie: $('Parse & Validate Omnichannel Payload').first().json.li_at || '' }) }}",
+        "options": {}
+      },
+      "id": "19cdd4a5-52e2-4d3d-9906-7df5d55d2c7f",
+      "name": "LinkedIn: Warm-Up & Like Recent Post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3152,
+        656
+      ],
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "amount": 4
+      },
+      "id": "4bbdb3a3-10f5-4435-8bfb-954154fa5434",
+      "name": "Wait 4s (Human Jitter)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        3392,
+        832
+      ],
+      "webhookId": "a05ce872-29ce-4986-b3e1-1041faa1fa19"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($('Parse & Validate Omnichannel Payload').first().json.linkedin_server_url || 'https://genethliacally-yetta-unrhythmically.ngrok-free.dev') + '/linkedin/action' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "ngrok-skip-browser-warning",
+              "value": "true"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ action: 'SEND_CONNECTION_REQUEST', urls: [$('Parse & Validate Omnichannel Payload').first().json.linkedin_profile || ''], cookie: $('Parse & Validate Omnichannel Payload').first().json.li_at || '', browserState: $('Parse & Validate Omnichannel Payload').first().json.browserState || '', message: $('Parse & Validate Omnichannel Payload').first().json.linkedin_connection_note || '', dm_message: $('Parse & Validate Omnichannel Payload').first().json.linkedin_dm_1_diagnostic || '' }) }}",
+        "options": {}
+      },
+      "id": "94ddf0e7-eba5-4305-87d6-b5589a3c9284",
+      "name": "LinkedIn: Send Friend Request (<285 chars)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3632,
+        704
+      ],
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first()?.json || {};\nconst payload = $('Parse & Validate Omnichannel Payload').first()?.json || {};\n\nlet actionStatus = 'Connection Sent';\nlet details = '';\n\nif (raw.error || raw.success === false) {\n  actionStatus = 'LinkedIn Queued (Check Session)';\n  details = raw.error || raw.message || 'Session or actor check needed';\n} else if (Array.isArray(raw) && raw[0]) {\n  actionStatus = raw[0].status || 'Connection Sent';\n  details = raw[0].message || 'Success';\n} else if (raw.status) {\n  actionStatus = raw.status;\n  details = raw.message || 'Success';\n}\n\nreturn [{\n  json: {\n    ...payload,\n    linkedin_execution_status: actionStatus,\n    linkedin_execution_details: details,\n    executed_at: $now.toISO()\n  }\n}];\n"
+      },
+      "id": "66595981-67d0-4ba7-891d-14d3157972c9",
+      "name": "Record LinkedIn Execution Status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3888,
+        864
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://server.smartlead.ai/api/v1/campaigns/YOUR_SMARTLEAD_CAMPAIGN_ID/leads",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "api_key",
+              "value": "YOUR_SMARTLEAD_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ lead_list: [{ first_name: $json.first_name || '', last_name: $json.last_name || '', email: $json.work_email || '', company_name: $json.company_name || '', website: $json.company_domain || '', linkedin_profile: $json.linkedin_profile || '', custom_fields: { subject_line: $json.subject_line || '', email_1: $json.email_1 || '', email_2: $json.email_2 || '', email_3: $json.email_3 || '', linkedin_note: $json.linkedin_connection_note || '' } }], settings: { ignore_global_block_list: false, ignore_unsubscribe_list: false, ignore_duplicate_leads_in_other_campaign: false } }) }}",
+        "options": {}
+      },
+      "id": "3075aeca-3b75-425d-b6a1-ededf28003e0",
+      "name": "Push Sequence to Smartlead Campaign",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4144,
+        720
+      ],
+      "alwaysOutputData": true,
+      "disabled": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1BaO-BXMg2zuWFoEyJiAXtd72zxLDwcetLi7PjH9Zoh4",
+          "mode": "list",
+          "cachedResultName": "Bold Metrics | Email Marketing | n8n | Input and Output Sheets | Mock Campaign",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BaO-BXMg2zuWFoEyJiAXtd72zxLDwcetLi7PjH9Zoh4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 575716855,
+          "mode": "list",
+          "cachedResultName": "Output",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BaO-BXMg2zuWFoEyJiAXtd72zxLDwcetLi7PjH9Zoh4/edit#gid=575716855"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "First Name": "={{ $('Record LinkedIn Execution Status').first().json.first_name }}",
+            "Last Name": "={{ $('Record LinkedIn Execution Status').first().json.last_name }}",
+            "Job Title": "={{ $('Record LinkedIn Execution Status').first().json.job_title }}",
+            "Company Name": "={{ $('Record LinkedIn Execution Status').first().json.company_name }}",
+            "Work Email": "={{ $('Record LinkedIn Execution Status').first().json.work_email }}",
+            "LinkedIn Profile": "={{ $('Record LinkedIn Execution Status').first().json.linkedin_profile }}",
+            "LinkedIn Score": "={{ $('Record LinkedIn Execution Status').first().json.linkedin_score }}",
+            "LinkedIn Connection Note": "={{ $('Record LinkedIn Execution Status').first().json.linkedin_connection_note }}",
+            "LinkedIn DM 1 (Diagnostic)": "={{ $('Record LinkedIn Execution Status').first().json.linkedin_dm_1_diagnostic }}",
+            "LinkedIn DM 2 (Follow-up)": "={{ $('Record LinkedIn Execution Status').first().json.linkedin_dm_2_followup }}",
+            "LinkedIn Status": "={{ $('Record LinkedIn Execution Status').first().json.linkedin_execution_status }}",
+            "Subject Line": "={{ $('Record LinkedIn Execution Status').first().json.subject_line }}",
+            "Email 1": "={{ $('Record LinkedIn Execution Status').first().json.email_1 }}",
+            "Email 2": "={{ $('Record LinkedIn Execution Status').first().json.email_2 }}",
+            "Email 3": "={{ $('Record LinkedIn Execution Status').first().json.email_3 }}",
+            "Dossier Dataasets": "={{ $('AI Omnichannel Researcher').first().json.text || $('AI Omnichannel Researcher').first().json.response || $('AI Omnichannel Researcher').first().json.output || $('AI Omnichannel Researcher').first().json.content?.[0]?.text || '' }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "12fbe928-9a89-4712-93c5-c091e7420077",
+      "name": "Save Omnichannel Package to Output Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.2,
+      "position": [
+        4400,
+        896
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2wAJfnX2oFxXJdSE",
+          "name": "Google Sheets OAuth2 API"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1BaO-BXMg2zuWFoEyJiAXtd72zxLDwcetLi7PjH9Zoh4",
+          "mode": "list",
+          "cachedResultName": "Bold Metrics | Email Marketing | n8n | Input and Output Sheets | Mock Campaign",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BaO-BXMg2zuWFoEyJiAXtd72zxLDwcetLi7PjH9Zoh4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Input",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BaO-BXMg2zuWFoEyJiAXtd72zxLDwcetLi7PjH9Zoh4/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $('Loop Over Prospects').first().json.row_number }}",
+            "Lead Status": "Omnichannel Sent"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "Lead Status",
+              "displayName": "Lead Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e53fa69f-dfc0-4863-ac5b-a8f40786d402",
+      "name": "Update Status: Omnichannel Sent",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        4640,
+        1088
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2wAJfnX2oFxXJdSE",
+          "name": "Google Sheets OAuth2 API"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 9 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "f382dd36-17b4-4fec-92dc-05687d79d76a",
+      "name": "Daily LinkedIn Acceptance Poller (9:30 AM)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -224,
+        1584
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1m4rD_sDJIE5AD2bg2Osjk2UHESwBEhF7BE_NKQMCTAk",
+          "mode": "list",
+          "cachedResultName": "BOLDEST | Email Marketing | n8n | CRMC 2026 | Input Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1m4rD_sDJIE5AD2bg2Osjk2UHESwBEhF7BE_NKQMCTAk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1832008571,
+          "mode": "list",
+          "cachedResultName": "Config",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1m4rD_sDJIE5AD2bg2Osjk2UHESwBEhF7BE_NKQMCTAk/edit?usp=drivesdk#gid=1832008571"
+        },
+        "options": {}
+      },
+      "id": "f386945f-1610-4bc1-88ca-f6039ff6ac8a",
+      "name": "Get LinkedIn Config (Poller)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        48,
+        1712
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2wAJfnX2oFxXJdSE",
+          "name": "Google Sheets OAuth2 API"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1BaO-BXMg2zuWFoEyJiAXtd72zxLDwcetLi7PjH9Zoh4",
+          "mode": "list",
+          "cachedResultName": "Bold Metrics | Email Marketing | n8n | Input and Output Sheets | Mock Campaign",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BaO-BXMg2zuWFoEyJiAXtd72zxLDwcetLi7PjH9Zoh4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Input",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BaO-BXMg2zuWFoEyJiAXtd72zxLDwcetLi7PjH9Zoh4/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Lead Status",
+              "lookupValue": "Omnichannel Sent"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d5c652ed-531e-404c-a177-a2d5258a545e",
+      "name": "Get Pending LinkedIn Requests",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        304,
+        1552
+      ],
+      "executeOnce": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2wAJfnX2oFxXJdSE",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "e9cad21d-ba9a-485c-8328-35a5979c9301",
+      "name": "Loop Pending Connections",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        576,
+        1696
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($('Get LinkedIn Config (Poller)').first()?.json?.LinkedInServerUrl || $('Get LinkedIn Config (Poller)').first()?.json?.NgrokUrl || 'https://genethliacally-yetta-unrhythmically.ngrok-free.dev').replace(/\\/+$/, '') + '/linkedin/action' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "ngrok-skip-browser-warning",
+              "value": "true"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ action: 'CHECK_CONNECTION_STATUS', urls: [$('Loop Pending Connections').first().json['LinkedIn Profile'] || ''], cookie: $('Get LinkedIn Config (Poller)').first()?.json?.li_at || '', browserState: $('Get LinkedIn Config (Poller)').first()?.json?.BrowserState || $('Get LinkedIn Config (Poller)').first()?.json?.browserState || '' }) }}",
+        "options": {}
+      },
+      "id": "ab3e44e2-9a0b-4965-bc50-cb644a1d683e",
+      "name": "LinkedIn: Check If Accepted",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        848,
+        1536
+      ],
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "is-connected-check",
+              "leftValue": "={{ String($json.status || '') }}",
+              "rightValue": "connected",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "3eb70e4b-edc4-4346-8896-fd1839f397a7",
+      "name": "IF Connection Accepted",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1104,
+        1680
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($('Get LinkedIn Config (Poller)').first()?.json?.LinkedInServerUrl || $('Get LinkedIn Config (Poller)').first()?.json?.NgrokUrl || 'https://genethliacally-yetta-unrhythmically.ngrok-free.dev').replace(/\\/+$/, '') + '/linkedin/action' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "ngrok-skip-browser-warning",
+              "value": "true"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ action: 'SEND_DM', urls: [$('Loop Pending Connections').first().json['LinkedIn Profile'] || ''], cookie: $('Get LinkedIn Config (Poller)').first()?.json?.li_at || '', browserState: $('Get LinkedIn Config (Poller)').first()?.json?.BrowserState || $('Get LinkedIn Config (Poller)').first()?.json?.browserState || '', message: (() => { const row = $('Loop Pending Connections').first().json; const check = $('LinkedIn: Check If Accepted').first()?.json || {}; const firstName = row['First Name'] || row.first_name || 'there'; const companyName = row['Company Name for Emails'] || row['Company Name'] || row.company_name || 'your brand'; const defaultTail = `Quick question: when shoppers are choosing between sizes on ${companyName}'s product pages, are you mostly relying on static size guides right now, or testing interactive fit guidance?`; let baseDm = String(row['LinkedIn DM 1 (Diagnostic)'] || row.linkedin_dm_1_diagnostic || row['LinkedIn Connection Note'] || `Thanks for connecting, ${firstName}. ${defaultTail}`).replace(/\\[[A-Za-z0-9 _'\\-\\/]{2,60}\\]\\s*(?:and\\s+wanted\\s+to\\s+ask\\s+a\\s+quick\\s+question:|and\\s+wanted\\s+to\\s+reach\\s+out[^.:]*[.:]?|[,.:;-]*\\s*)?/gi, '').replace(/\\s{2,}/g, ' ').trim(); if (!baseDm || /\\[[A-Za-z0-9 _'\\-\\/]{2,60}\\]/.test(baseDm)) { baseDm = `Thanks for connecting, ${firstName}. ${defaultTail}`; } const opener = check.mutual_opener_phrase || ''; const primary = check.lead_colleague_names?.[0] || ''; if (opener && primary && !baseDm.toLowerCase().includes(primary.toLowerCase())) { const cleanTail = baseDm.replace(/^(hi|hey|hello)\\s+[^,.!\\n]+[,!.]\\s*/i, '').replace(/^thanks for connecting[^.!?\\n]*[.!?]\\s*/i, '').trim(); return `Thanks for connecting, ${firstName}. ${opener}. ${cleanTail || defaultTail}`; } return baseDm; })() }) }}",
+        "options": {}
+      },
+      "id": "d0e2f45c-5864-4230-b2bb-7109856d6574",
+      "name": "LinkedIn: Send Diagnostic DM (Touch 2)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1376,
+        1520
+      ],
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1BaO-BXMg2zuWFoEyJiAXtd72zxLDwcetLi7PjH9Zoh4",
+          "mode": "list",
+          "cachedResultName": "Bold Metrics | Email Marketing | n8n | Input and Output Sheets | Mock Campaign",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BaO-BXMg2zuWFoEyJiAXtd72zxLDwcetLi7PjH9Zoh4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 575716855,
+          "mode": "list",
+          "cachedResultName": "Output",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BaO-BXMg2zuWFoEyJiAXtd72zxLDwcetLi7PjH9Zoh4/edit#gid=575716855"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "LinkedIn Profile": "={{ $('Loop Pending Connections').first().json['LinkedIn Profile'] }}",
+            "LinkedIn Status": "Connected - Diagnostic DM Sent"
+          },
+          "matchingColumns": [
+            "LinkedIn Profile"
+          ],
+          "schema": [
+            {
+              "id": "LinkedIn Profile",
+              "displayName": "LinkedIn Profile",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "LinkedIn Status",
+              "displayName": "LinkedIn Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d2ca0c4f-dfff-4f74-9f1d-771c162c160f",
+      "name": "Update Status: Diagnostic DM Sent",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1648,
+        1664
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2wAJfnX2oFxXJdSE",
+          "name": "Google Sheets OAuth2 API"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get LinkedIn Session Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Campaign Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get LinkedIn Session Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get LinkedIn Session Config": {
+      "main": [
+        [
+          {
+            "node": "Get Prospects (Input Sheet)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Prospects (Input Sheet)": {
+      "main": [
+        [
+          {
+            "node": "Filter Unprocessed Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Unprocessed Leads": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Prospects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Prospects": {
+      "main": [
+        [
+          {
+            "node": "Get LinkedIn Config (Poller)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "LinkedIn: Check Mutual Connections",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LinkedIn: Check Mutual Connections": {
+      "main": [
+        [
+          {
+            "node": "Search Website Fit & Stack Signals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Website Fit & Stack Signals": {
+      "main": [
+        [
+          {
+            "node": "Search Recent News & Buying Triggers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Recent News & Buying Triggers": {
+      "main": [
+        [
+          {
+            "node": "Normalize LinkedIn Dossier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize LinkedIn Dossier": {
+      "main": [
+        [
+          {
+            "node": "AI Omnichannel Researcher",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Omnichannel Researcher": {
+      "main": [
+        [
+          {
+            "node": "Filter Relevant Prospects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Model - Researcher": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Omnichannel Researcher",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Relevant Prospects": {
+      "main": [
+        [
+          {
+            "node": "Generate Omnichannel Sequence",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Status: Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Status: Rejected": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Prospects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Omnichannel Sequence": {
+      "main": [
+        [
+          {
+            "node": "Parse & Validate Omnichannel Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Model - Copywriter": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generate Omnichannel Sequence",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse & Validate Omnichannel Payload": {
+      "main": [
+        [
+          {
+            "node": "LinkedIn: Warm-Up & Like Recent Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LinkedIn: Warm-Up & Like Recent Post": {
+      "main": [
+        [
+          {
+            "node": "Wait 4s (Human Jitter)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 4s (Human Jitter)": {
+      "main": [
+        [
+          {
+            "node": "LinkedIn: Send Friend Request (<285 chars)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LinkedIn: Send Friend Request (<285 chars)": {
+      "main": [
+        [
+          {
+            "node": "Record LinkedIn Execution Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record LinkedIn Execution Status": {
+      "main": [
+        [
+          {
+            "node": "Push Sequence to Smartlead Campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Push Sequence to Smartlead Campaign": {
+      "main": [
+        [
+          {
+            "node": "Save Omnichannel Package to Output Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Omnichannel Package to Output Sheet": {
+      "main": [
+        [
+          {
+            "node": "Update Status: Omnichannel Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Status: Omnichannel Sent": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Prospects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily LinkedIn Acceptance Poller (9:30 AM)": {
+      "main": [
+        [
+          {
+            "node": "Get LinkedIn Config (Poller)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get LinkedIn Config (Poller)": {
+      "main": [
+        [
+          {
+            "node": "Get Pending LinkedIn Requests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Pending LinkedIn Requests": {
+      "main": [
+        [
+          {
+            "node": "Loop Pending Connections",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Pending Connections": {
+      "main": [
+        [],
+        [
+          {
+            "node": "LinkedIn: Check If Accepted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LinkedIn: Check If Accepted": {
+      "main": [
+        [
+          {
+            "node": "IF Connection Accepted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Connection Accepted": {
+      "main": [
+        [
+          {
+            "node": "LinkedIn: Send Diagnostic DM (Touch 2)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Pending Connections",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LinkedIn: Send Diagnostic DM (Touch 2)": {
+      "main": [
+        [
+          {
+            "node": "Update Status: Diagnostic DM Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Status: Diagnostic DM Sent": {
+      "main": [
+        [
+          {
+            "node": "Loop Pending Connections",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5b0007cc41a579623855ff94ac3f357a0cbd051be6d1c21c76d1791d1fafca50"
+  }
+}

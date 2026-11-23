@@ -1,0 +1,18 @@
+# Local Chrome session & user-specific caches (NEVER commit)
+linkedin-chrome-profile/
+linkedin-local-service/boldest_roster_cache.json
+boldest_roster_cache.json
+
+# Python virtual environments & caches
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Secrets, env files & logs
+.env
+.env.*
+*.log
+.DS_Store
+Thumbs.db
